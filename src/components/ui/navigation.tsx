@@ -3,17 +3,19 @@ import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { PenTool, LogOut, User, Menu, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "@/hooks/useAuth";
 
-interface NavigationProps {
-  user?: { username: string } | null;
-  onLogout?: () => void;
-}
-
-export const Navigation = ({ user, onLogout }: NavigationProps) => {
+export const Navigation = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
+  const { user, signOut } = useAuth();
 
   const isActive = (path: string) => location.pathname === path;
+
+  const handleSignOut = async () => {
+    await signOut();
+    setIsMenuOpen(false);
+  };
 
   return (
     <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
@@ -38,14 +40,6 @@ export const Navigation = ({ user, onLogout }: NavigationProps) => {
               }`}
             >
               Home
-            </Link>
-            <Link
-              to="/blogs"
-              className={`text-sm font-medium transition-colors hover:text-primary ${
-                isActive("/blogs") ? "text-primary" : "text-muted-foreground"
-              }`}
-            >
-              Blogs
             </Link>
             
             {user ? (
@@ -72,7 +66,7 @@ export const Navigation = ({ user, onLogout }: NavigationProps) => {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={onLogout}
+                  onClick={handleSignOut}
                   className="text-muted-foreground hover:text-destructive"
                 >
                   <LogOut className="w-4 h-4" />
@@ -125,13 +119,6 @@ export const Navigation = ({ user, onLogout }: NavigationProps) => {
                 >
                   Home
                 </Link>
-                <Link
-                  to="/blogs"
-                  className="block text-sm font-medium py-2 px-3 rounded-md hover:bg-muted transition-colors"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Blogs
-                </Link>
                 
                 {user ? (
                   <>
@@ -150,10 +137,7 @@ export const Navigation = ({ user, onLogout }: NavigationProps) => {
                       Write Post
                     </Link>
                     <button
-                      onClick={() => {
-                        onLogout?.();
-                        setIsMenuOpen(false);
-                      }}
+                      onClick={handleSignOut}
                       className="block w-full text-left text-sm font-medium py-2 px-3 rounded-md hover:bg-muted transition-colors text-destructive"
                     >
                       Logout

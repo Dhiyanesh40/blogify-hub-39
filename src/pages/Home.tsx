@@ -1,39 +1,23 @@
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { BlogCard } from "@/components/ui/blog-card";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, PenTool, Users, BookOpen } from "lucide-react";
 import { Link } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
-// Mock data for demonstration
-const featuredBlogs = [
-  {
-    id: "1",
-    title: "Getting Started with React and TypeScript",
-    content: "Learn how to build modern web applications using React with TypeScript. We'll cover component creation, type safety, and best practices for scalable development.",
-    author: "Alex Chen",
-    createdAt: "2024-01-15",
-    readTime: 8,
-    tags: ["React", "TypeScript", "Web Development"]
-  },
-  {
-    id: "2", 
-    title: "The Future of Web Development",
-    content: "Exploring the latest trends and technologies shaping the future of web development. From AI integration to progressive web apps, discover what's coming next.",
-    author: "Sarah Johnson",
-    createdAt: "2024-01-12",
-    readTime: 6,
-    tags: ["Future Tech", "AI", "PWA"]
-  },
-  {
-    id: "3",
-    title: "Mastering CSS Grid and Flexbox",
-    content: "A comprehensive guide to modern CSS layout techniques. Learn when to use CSS Grid vs Flexbox and how to create responsive, beautiful layouts.",
-    author: "David Park",
-    createdAt: "2024-01-10",
-    readTime: 10,
-    tags: ["CSS", "Layout", "Design"]
-  }
-];
+interface Blog {
+  id: string;
+  title: string;
+  content: string;
+  excerpt: string | null;
+  published: boolean;
+  created_at: string;
+  profiles: {
+    username: string;
+    display_name: string;
+  };
+}
 
 const stats = [
   { icon: BookOpen, label: "Blog Posts", value: "1,200+" },
@@ -42,6 +26,37 @@ const stats = [
 ];
 
 export const Home = () => {
+  const [blogs, setBlogs] = useState<Blog[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchBlogs();
+  }, []);
+
+  const fetchBlogs = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('blogs')
+        .select(`
+          *,
+          profiles (
+            username,
+            display_name
+          )
+        `)
+        .eq('published', true)
+        .order('created_at', { ascending: false })
+        .limit(6);
+
+      if (error) throw error;
+      setBlogs(data || []);
+    } catch (err) {
+      console.error('Error fetching blogs:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
@@ -73,15 +88,6 @@ export const Home = () => {
                 >
                   Start Writing Today
                   <ArrowRight className="w-5 h-5 ml-2" />
-                </Button>
-              </Link>
-              <Link to="/blogs">
-                <Button 
-                  variant="outline" 
-                  size="lg"
-                  className="text-lg px-8 py-6 h-auto border-2 hover:bg-muted/50"
-                >
-                  Explore Blogs
                 </Button>
               </Link>
             </div>
@@ -137,34 +143,44 @@ export const Home = () => {
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
-            {featuredBlogs.map((blog, index) => (
-              <BlogCard
-                key={blog.id}
-                {...blog}
-                index={index}
-              />
-            ))}
-          </div>
-
-          <motion.div
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-            viewport={{ once: true }}
-            className="text-center"
-          >
-            <Link to="/blogs">
-              <Button 
-                variant="outline" 
-                size="lg"
-                className="border-2 hover:bg-primary hover:text-primary-foreground transition-all duration-300"
-              >
-                View All Blogs
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-            </Link>
-          </motion.div>
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {[...Array(6)].map((_, index) => (
+                <div key={index} className="animate-pulse">
+                  <div className="bg-muted rounded-lg h-64"></div>
+                </div>
+              ))}
+            </div>
+          ) : blogs.length === 0 ? (
+            <div className="text-center py-12">
+              <h3 className="text-xl font-semibold mb-4">No blog posts yet</h3>
+              <p className="text-muted-foreground mb-6">
+                Be the first to share your story with the world!
+              </p>
+              <Link to="/register">
+                <Button className="bg-gradient-primary hover:shadow-elegant transition-all duration-300">
+                  Create First Post
+                  <ArrowRight className="ml-2 w-4 h-4" />
+                </Button>
+              </Link>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
+              {blogs.map((blog, index) => (
+                <BlogCard
+                  key={blog.id}
+                  id={blog.id}
+                  title={blog.title}
+                  content={blog.content}
+                  author={blog.profiles.display_name || blog.profiles.username}
+                  createdAt={blog.created_at}
+                  readTime={Math.ceil(blog.content.length / 200)}
+                  tags={["Article"]}
+                  index={index}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
