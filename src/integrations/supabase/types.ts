@@ -17,6 +17,7 @@ export type Database = {
       blogs: {
         Row: {
           author_id: string
+          background_image_url: string | null
           content: string
           created_at: string
           excerpt: string | null
@@ -26,9 +27,13 @@ export type Database = {
           tags: string[] | null
           title: string
           updated_at: string
+          verification_requested: boolean | null
+          verified: boolean | null
+          verified_at: string | null
         }
         Insert: {
           author_id: string
+          background_image_url?: string | null
           content: string
           created_at?: string
           excerpt?: string | null
@@ -38,9 +43,13 @@ export type Database = {
           tags?: string[] | null
           title: string
           updated_at?: string
+          verification_requested?: boolean | null
+          verified?: boolean | null
+          verified_at?: string | null
         }
         Update: {
           author_id?: string
+          background_image_url?: string | null
           content?: string
           created_at?: string
           excerpt?: string | null
@@ -50,6 +59,9 @@ export type Database = {
           tags?: string[] | null
           title?: string
           updated_at?: string
+          verification_requested?: boolean | null
+          verified?: boolean | null
+          verified_at?: string | null
         }
         Relationships: [
           {
@@ -68,6 +80,7 @@ export type Database = {
           created_at: string
           display_name: string | null
           id: string
+          role: string | null
           updated_at: string
           user_id: string
           username: string
@@ -78,6 +91,7 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id?: string
+          role?: string | null
           updated_at?: string
           user_id: string
           username: string
@@ -88,6 +102,7 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id?: string
+          role?: string | null
           updated_at?: string
           user_id?: string
           username?: string
@@ -99,7 +114,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_role: {
+        Args: { user_uuid: string }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
