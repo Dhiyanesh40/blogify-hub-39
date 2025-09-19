@@ -1,38 +1,18 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Calendar, User, Edit3, Trash2 } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { ArrowLeft, Calendar, Clock, User, CheckCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
-
-interface Blog {
-  id: string;
-  title: string;
-  content: string;
-  excerpt: string | null;
-  published: boolean;
-  created_at: string;
-  updated_at: string;
-  author_id: string;
-  profiles: {
-    username: string;
-    display_name: string;
-  };
-}
 
 export const BlogDetail = () => {
   const { id } = useParams();
-  const { user } = useAuth();
-  const [blog, setBlog] = useState<Blog | null>(null);
+  const [blog, setBlog] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const navigate = useNavigate();
-  const { toast } = useToast();
 
   useEffect(() => {
     if (id) {
@@ -46,51 +26,41 @@ export const BlogDetail = () => {
         .from('blogs')
         .select(`
           *,
-          profiles (
-            username,
-            display_name
+          profiles:profiles!blogs_author_id_fkey (
+            display_name,
+            username
           )
         `)
         .eq('id', id)
         .single();
 
       if (error) throw error;
+
       setBlog(data);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (error: any) {
+      setError(error.message);
     } finally {
       setLoading(false);
     }
   };
 
-  const deleteBlog = async () => {
-    if (!blog || !user || blog.author_id !== user.id) return;
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
 
-    try {
-      const { error } = await supabase
-        .from('blogs')
-        .delete()
-        .eq('id', blog.id);
-
-      if (error) throw error;
-      
-      toast({
-        title: "Blog deleted",
-        description: "Your blog post has been deleted successfully.",
-      });
-      navigate("/dashboard");
-    } catch (err: any) {
-      toast({
-        title: "Error",
-        description: err.message,
-        variant: "destructive",
-      });
-    }
+  const calculateReadTime = (content: string) => {
+    const wordsPerMinute = 200;
+    const wordCount = content.split(' ').length;
+    return Math.ceil(wordCount / wordsPerMinute);
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-hero flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-hero">
         <div className="animate-pulse text-xl">Loading...</div>
       </div>
     );
@@ -98,109 +68,121 @@ export const BlogDetail = () => {
 
   if (error || !blog) {
     return (
-      <div className="min-h-screen bg-gradient-hero">
-        <div className="container mx-auto px-4 py-8">
-          <Alert variant="destructive" className="max-w-2xl mx-auto">
-            <AlertDescription>
-              {error || "Blog post not found"}
-            </AlertDescription>
-          </Alert>
-          <div className="text-center mt-6">
-            <Button onClick={() => navigate("/")}>
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Home
+      <div className="min-h-screen bg-gradient-hero flex items-center justify-center">
+        <Card className="bg-gradient-card border border-border/50 max-w-md">
+          <CardContent className="p-8 text-center">
+            <h3 className="text-xl font-semibold mb-4">Blog not found</h3>
+            <p className="text-muted-foreground mb-6">
+              The blog post you're looking for doesn't exist or has been removed.
+            </p>
+            <Button asChild>
+              <Link to="/">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Home
+              </Link>
             </Button>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
-  const isAuthor = user && blog.author_id === user.id;
-
   return (
-    <div className="min-h-screen bg-gradient-hero">
-      <div className="container mx-auto px-4 py-8">
+    <div className="min-h-screen bg-gradient-hero relative overflow-hidden">
+      {blog.background_image_url && (
+        <div className="fixed inset-0 w-full h-full z-0">
+          <img
+            src={blog.background_image_url}
+            alt="Blog background"
+            className="w-full h-full object-cover opacity-20"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-background/90 via-background/80 to-background" />
+        </div>
+      )}
+      
+      <div className="container mx-auto px-4 py-8 relative z-10">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
           className="max-w-4xl mx-auto"
         >
-          <div className="flex items-center justify-between mb-8">
-            <Button
-              variant="outline"
-              onClick={() => navigate("/")}
-              className="flex items-center gap-2"
-            >
-              <ArrowLeft className="w-4 h-4" />
+          <Button
+            asChild
+            variant="outline"
+            className="mb-6 backdrop-blur-sm"
+          >
+            <Link to="/">
+              <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Home
-            </Button>
-            
-            {isAuthor && (
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => navigate(`/edit/${blog.id}`)}
-                  className="flex items-center gap-2"
-                >
-                  <Edit3 className="w-4 h-4" />
-                  Edit
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={deleteBlog}
-                  className="flex items-center gap-2"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  Delete
-                </Button>
-              </div>
-            )}
-          </div>
+            </Link>
+          </Button>
 
-          <Card className="bg-gradient-card shadow-elegant border border-border/50">
-            <CardContent className="p-8">
-              <div className="flex items-center gap-4 mb-6">
-                <Badge variant={blog.published ? "default" : "secondary"}>
-                  {blog.published ? "Published" : "Draft"}
-                </Badge>
-                <div className="flex items-center text-sm text-muted-foreground">
-                  <Calendar className="w-4 h-4 mr-1" />
-                  {new Date(blog.created_at).toLocaleDateString()}
+          <Card className="bg-gradient-card/90 shadow-elegant border border-border/50 backdrop-blur-sm">
+            <CardHeader className="pb-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center space-x-3">
+                  <Avatar className="w-10 h-10">
+                    <AvatarFallback className="bg-gradient-primary text-white font-medium">
+                      {blog.profiles?.display_name?.charAt(0) || 
+                       blog.profiles?.username?.charAt(0) || 'A'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                      <User className="w-4 h-4" />
+                      <span className="font-medium">
+                        {blog.profiles?.display_name || blog.profiles?.username || 'Anonymous'}
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-4 text-xs text-muted-foreground mt-1">
+                      <div className="flex items-center space-x-1">
+                        <Calendar className="w-3 h-3" />
+                        <span>{formatDate(blog.created_at)}</span>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <Clock className="w-3 h-3" />
+                        <span>{calculateReadTime(blog.content)} min read</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex items-center text-sm text-muted-foreground">
-                  <User className="w-4 h-4 mr-1" />
-                  {blog.profiles.display_name || blog.profiles.username}
-                </div>
+                {blog.verified && (
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="bg-green-100 text-green-800">
+                      <CheckCircle className="w-3 h-3 mr-1" />
+                      Verified
+                    </Badge>
+                    <span className="text-green-500 text-2xl">✅</span>
+                  </div>
+                )}
               </div>
-
-              <h1 className="text-4xl font-bold mb-6">{blog.title}</h1>
+              
+              <CardTitle className="text-3xl md:text-4xl font-bold leading-tight mb-4">
+                {blog.title}
+              </CardTitle>
               
               {blog.excerpt && (
-                <p className="text-xl text-muted-foreground mb-8 leading-relaxed">
+                <CardDescription className="text-lg text-muted-foreground">
                   {blog.excerpt}
-                </p>
+                </CardDescription>
               )}
+              
+              {blog.tags && blog.tags.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-4">
+                  {blog.tags.map((tag: string, index: number) => (
+                    <Badge key={index} variant="secondary" className="bg-primary/10 text-primary">
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </CardHeader>
 
+            <CardContent>
               <div className="prose prose-lg max-w-none">
-                {blog.content.split('\n').map((paragraph, index) => (
-                  <p key={index} className="mb-4 leading-relaxed">
-                    {paragraph}
-                  </p>
-                ))}
-              </div>
-
-              <div className="mt-8 pt-8 border-t border-border">
-                <div className="flex items-center justify-between text-sm text-muted-foreground">
-                  <div>
-                    Written by {blog.profiles.display_name || blog.profiles.username}
-                  </div>
-                  <div>
-                    {blog.updated_at !== blog.created_at && (
-                      <>Updated {new Date(blog.updated_at).toLocaleDateString()}</>
-                    )}
-                  </div>
+                <div className="whitespace-pre-wrap text-foreground leading-relaxed">
+                  {blog.content}
                 </div>
               </div>
             </CardContent>

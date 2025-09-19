@@ -12,6 +12,7 @@ import { Dashboard } from "./pages/Dashboard";
 import { CreateBlog } from "./pages/CreateBlog";
 import { EditBlog } from "./pages/EditBlog";
 import { BlogDetail } from "./pages/BlogDetail";
+import { AdminVerification } from "./pages/AdminVerification";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,9 +31,10 @@ const App = () => (
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/create" element={<CreateBlog />} />
-              <Route path="/edit/:id" element={<EditBlog />} />
+              <Route path="/create-blog" element={<CreateBlog />} />
+              <Route path="/edit-blog/:id" element={<EditBlog />} />
               <Route path="/blog/:id" element={<BlogDetail />} />
+              <Route path="/admin/verification" element={<AdminVerification />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </div>

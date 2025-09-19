@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Save, Eye } from "lucide-react";
+import { ArrowLeft, Save, Eye, Upload, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -19,8 +19,11 @@ export const CreateBlog = () => {
     title: "",
     content: "",
     excerpt: "",
-    published: false
+    published: false,
+    verification_requested: false
   });
+  const [backgroundImage, setBackgroundImage] = useState<File | null>(null);
+  const [backgroundImageUrl, setBackgroundImageUrl] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
@@ -39,6 +42,29 @@ export const CreateBlog = () => {
     }));
   };
 
+  const handleImageUpload = async (file: File): Promise<string | null> => {
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}.${fileExt}`;
+      const filePath = `${user?.id}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('blog-images')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage
+        .from('blog-images')
+        .getPublicUrl(filePath);
+
+      return data.publicUrl;
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      return null;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent, shouldPublish = false) => {
     e.preventDefault();
     if (!user) return;
@@ -47,6 +73,15 @@ export const CreateBlog = () => {
     setError("");
 
     try {
+      let imageUrl = backgroundImageUrl;
+      
+      if (backgroundImage) {
+        imageUrl = await handleImageUpload(backgroundImage);
+        if (!imageUrl) {
+          throw new Error('Failed to upload background image');
+        }
+      }
+
       const { data, error: insertError } = await supabase
         .from('blogs')
         .insert({
@@ -54,18 +89,26 @@ export const CreateBlog = () => {
           content: formData.content,
           excerpt: formData.excerpt || formData.content.substring(0, 200),
           author_id: user.id,
-          published: shouldPublish || formData.published
+          published: shouldPublish || formData.published,
+          verification_requested: formData.verification_requested,
+          background_image_url: imageUrl
         })
         .select()
         .single();
 
       if (insertError) throw insertError;
 
+      const statusMessage = formData.verification_requested 
+        ? "Blog published and sent for verification!" 
+        : shouldPublish ? "Blog published!" : "Draft saved!";
+
       toast({
-        title: shouldPublish ? "Blog published!" : "Draft saved!",
-        description: shouldPublish 
-          ? "Your blog post has been published successfully."
-          : "Your blog post has been saved as a draft.",
+        title: statusMessage,
+        description: formData.verification_requested
+          ? "Your blog post has been published and submitted for admin verification."
+          : shouldPublish 
+            ? "Your blog post has been published successfully."
+            : "Your blog post has been saved as a draft.",
       });
 
       navigate("/dashboard");
@@ -154,6 +197,56 @@ export const CreateBlog = () => {
                 </div>
 
                 <div className="space-y-2">
+                  <Label className="text-sm font-medium">
+                    Background Image (Optional)
+                  </Label>
+                  <div className="flex items-center gap-4">
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setBackgroundImage(file);
+                          setBackgroundImageUrl(URL.createObjectURL(file));
+                        }
+                      }}
+                      className="hidden"
+                      id="background-image"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => document.getElementById('background-image')?.click()}
+                      className="flex items-center gap-2"
+                    >
+                      <Upload className="w-4 h-4" />
+                      Upload Image
+                    </Button>
+                    {backgroundImageUrl && (
+                      <div className="flex items-center gap-2">
+                        <img
+                          src={backgroundImageUrl}
+                          alt="Background preview"
+                          className="w-16 h-16 object-cover rounded"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setBackgroundImage(null);
+                            setBackgroundImageUrl("");
+                          }}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
                   <Label htmlFor="content" className="text-sm font-medium">
                     Content *
                   </Label>
@@ -168,17 +261,32 @@ export const CreateBlog = () => {
                   />
                 </div>
 
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="published"
-                    checked={formData.published}
-                    onCheckedChange={(checked) => 
-                      setFormData(prev => ({ ...prev, published: checked as boolean }))
-                    }
-                  />
-                  <Label htmlFor="published" className="text-sm">
-                    Publish immediately
-                  </Label>
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="published"
+                      checked={formData.published}
+                      onCheckedChange={(checked) => 
+                        setFormData(prev => ({ ...prev, published: checked as boolean }))
+                      }
+                    />
+                    <Label htmlFor="published" className="text-sm">
+                      Publish immediately
+                    </Label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="verification"
+                      checked={formData.verification_requested}
+                      onCheckedChange={(checked) => 
+                        setFormData(prev => ({ ...prev, verification_requested: checked as boolean }))
+                      }
+                    />
+                    <Label htmlFor="verification" className="text-sm">
+                      Apply for Verification ✅
+                    </Label>
+                  </div>
                 </div>
 
                 <div className="flex gap-4 pt-4">

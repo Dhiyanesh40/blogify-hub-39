@@ -14,6 +14,8 @@ interface BlogCardProps {
   readTime?: number;
   tags?: string[];
   index?: number;
+  verified?: boolean;
+  backgroundImageUrl?: string;
 }
 
 export const BlogCard = ({ 
@@ -24,7 +26,9 @@ export const BlogCard = ({
   createdAt, 
   readTime = 5,
   tags = [],
-  index = 0 
+  index = 0,
+  verified = false,
+  backgroundImageUrl
 }: BlogCardProps) => {
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -48,8 +52,18 @@ export const BlogCard = ({
       className="group"
     >
       <Link to={`/blog/${id}`}>
-        <Card className="h-full bg-gradient-card hover:shadow-card transition-all duration-300 border border-border/50 hover:border-primary/20">
-          <CardHeader className="pb-3">
+        <Card className="h-full bg-gradient-card hover:shadow-card transition-all duration-300 border border-border/50 hover:border-primary/20 relative overflow-hidden">
+          {backgroundImageUrl && (
+            <div className="absolute inset-0 w-full h-full">
+              <img
+                src={backgroundImageUrl}
+                alt="Blog background"
+                className="w-full h-full object-cover opacity-20"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-background/60" />
+            </div>
+          )}
+          <CardHeader className="pb-3 relative z-10">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center space-x-2">
                 <Avatar className="w-8 h-8">
@@ -68,12 +82,17 @@ export const BlogCard = ({
               </div>
             </div>
             
-            <h3 className="font-bold text-xl leading-tight group-hover:text-primary transition-colors duration-200 line-clamp-2">
-              {title}
-            </h3>
+            <div className="flex items-start justify-between gap-2">
+              <h3 className="font-bold text-xl leading-tight group-hover:text-primary transition-colors duration-200 line-clamp-2 flex-1">
+                {title}
+              </h3>
+              {verified && (
+                <span className="text-green-500 text-xl flex-shrink-0">✅</span>
+              )}
+            </div>
           </CardHeader>
           
-          <CardContent className="pt-0">
+          <CardContent className="pt-0 relative z-10">
             <p className="text-muted-foreground leading-relaxed mb-4 line-clamp-3">
               {getExcerpt(content)}
             </p>
